@@ -22,8 +22,8 @@ st.title("Henkel Job Scraper")
 # User inputs
 selected_regions = st.multiselect(
     "Select Regions",
-    options=["Europe", "United States", "Latin America", "North America", "Asia Pacific"],
-    default=["Europe", "United States"]
+    options=["Europe", "Latin America", "North America", "Asia-Pacific"],
+    default=["Europe"]
 )
 
 max_jobs = st.number_input("Maximum Jobs to Scrape (0 = All)", min_value=0, value=MAX_JOBS_DEFAULT, step=10)
@@ -128,3 +128,4 @@ if st.button("Fetch Jobs"):
                 st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")
         else:
             st.warning("No jobs found.")
+

@@ -21,7 +21,7 @@ MAX_RETRIES = 3        # retry attempts for failed requests
 RETRY_DELAY = 2        # seconds to wait between retries
 
 # ========== STREAMLIT UI ==========
-st.title("Henkel Job Scraper (Fixed Columns)")
+st.title("Henkel Job Scraper (With Company Column)")
 
 selected_regions = st.multiselect(
     "Select Regions",
@@ -32,7 +32,7 @@ selected_regions = st.multiselect(
 max_jobs = st.number_input("Maximum Jobs to Scrape (0 = All)", min_value=0, value=MAX_JOBS_DEFAULT, step=10)
 
 def fetch_job_details(job):
-    """Fetch individual job page and parse details with retry mechanism and correct column mapping."""
+    """Fetch individual job page and parse details with retry mechanism and Company column."""
     job_link = "https://www.henkel.com" + job.get("link", "")
     job_id = job.get("id")
     title = job.get("title")
@@ -72,12 +72,13 @@ def fetch_job_details(job):
                     if url:
                         job_center_text += f" ({url})"
 
-            # ========== FIXED CATEGORY PARSING ==========
+            # ========== FIXED CATEGORY PARSING WITH COMPANY ==========
             job_department = None
             job_function = None
             job_detailed_location = None
             job_type = None
             job_nature = None
+            job_company = None  # new column
 
             for span in soup.select("span.category"):
                 svg = span.find("svg")
@@ -90,7 +91,14 @@ def fetch_job_details(job):
                         else:
                             job_function = text
                     elif "a-icon--maps" in svg_class:
-                        job_detailed_location = text
+                        # split last comma as company/division
+                        if ',' in text:
+                            parts = text.rsplit(',', 1)
+                            job_detailed_location = parts[0].strip()
+                            job_company = parts[1].strip()
+                        else:
+                            job_detailed_location = text
+                            job_company = None
                     elif "a-icon--clock" in svg_class:
                         job_type = text
                     elif "a-icon--doc-inv" in svg_class:
@@ -113,6 +121,7 @@ def fetch_job_details(job):
                 "Department": job_department,
                 "Function": job_function,
                 "Detailed Location": job_detailed_location,
+                "Company / Business Unit": job_company,
                 "Employment Type": job_type,
                 "Job Nature": job_nature,
                 "Apply Link": apply_link

@@ -21,7 +21,7 @@ MAX_RETRIES = 3        # retry attempts for failed requests
 RETRY_DELAY = 2        # seconds to wait between retries
 
 # ========== STREAMLIT UI ==========
-st.title("Henkel Job Scraper (Fixed Company & Location)")
+st.title("💼 Henkel Job Scraper")
 
 selected_regions = st.multiselect(
     "Select Regions",
@@ -30,6 +30,13 @@ selected_regions = st.multiselect(
 )
 
 max_jobs = st.number_input("Maximum Jobs to Scrape (0 = All)", min_value=0, value=MAX_JOBS_DEFAULT, step=10)
+
+def generate_slug(company, job_title, location):
+    """Generate slug from company, job title, and first two parts of location."""
+    location_parts = location.split(",")[:2]  # first two parts
+    parts = [company, job_title] + [part.strip() for part in location_parts]
+    slug = "-".join(parts).lower().replace(" ", "-")
+    return slug
 
 def fetch_job_details(job):
     """Fetch individual job page and parse details with retry mechanism and fixed Company."""
@@ -44,11 +51,11 @@ def fetch_job_details(job):
             job_response.raise_for_status()
             soup = BeautifulSoup(job_response.text, "html.parser")
 
-            # Description
+            # Description as HTML
             description_section = soup.find("div", class_="job-detail__content-description")
-            description = description_section.get_text(separator="\n").strip() if description_section else None
+            description = str(description_section) if description_section else None
 
-            # Qualifications
+            # Qualifications (plain text for now)
             qualification_section = soup.find("div", class_="job-detail__content-qualification")
             qualifications = qualification_section.get_text(separator="\n").strip() if qualification_section else None
 
@@ -72,7 +79,7 @@ def fetch_job_details(job):
                     if url:
                         job_center_text += f" ({url})"
 
-            # ========== CATEGORY PARSING ==========
+            # Categories
             job_department = None
             job_function = None
             job_type = None
@@ -90,7 +97,7 @@ def fetch_job_details(job):
                         else:
                             job_function = text
                     elif "a-icon--maps" in svg_class:
-                        job_location = text  # keep full location as-is
+                        job_location = text  # full location
                     elif "a-icon--clock" in svg_class:
                         job_type = text
                     elif "a-icon--doc-inv" in svg_class:
@@ -100,18 +107,22 @@ def fetch_job_details(job):
             apply_link_tag = soup.select_one("a.job-detail__apply-now")
             apply_link = apply_link_tag.get("href") if apply_link_tag else None
 
+            # Generate slug
+            slug = generate_slug("Henkel", title, job_location or location)
+
             return {
                 "Name": title,
-                "Location": job_location,  # replaced Detailed Location
-                "Company": "Henkel AG & Co. KGaA",  # fixed company name
+                "Location": job_location or location,
+                "Company": "Henkel AG & Co. KGaA",
                 "Description": description,
-                "Level": job_type,  # Employment Type
-                "Type": job_nature,  # Job Nature
+                "Level": job_type,
+                "Type": job_nature,
                 "Deadline": application_deadline,
                 "Industry": job_center_text,
                 "Department": job_department,
                 "Function": job_function,
-                "Apply URL": apply_link
+                "Apply URL": apply_link,
+                "Slug": slug
             }
 
         except Exception as e:
@@ -172,21 +183,21 @@ if st.button("Fetch Jobs"):
             st.success(f"Found {len(all_jobs)} jobs!")
             df = pd.DataFrame(all_jobs)
 
-            # ========== ADD NEW BLANK COLUMNS ==========
+            # Add blank columns
             blank_columns = [
-                "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID",
                 "Company Salary Range", "Access Industry Salary"
             ]
             for col in blank_columns:
                 df[col] = ""
 
-            # ========== REORDER COLUMNS ==========
+            # Reorder columns
             column_order = [
-    "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
-    "Created On", "Updated On", "Published On", "CMS ID", "Company",
-    "Type", "Description", "Company Salary Range", "Access Industry Salary", "Location",
-    "Industry", "Level", "Deadline", "Apply URL"
+                "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Created On", "Updated On", "Published On", "CMS ID", "Company",
+                "Type", "Description", "Company Salary Range", "Access Industry Salary", "Location",
+                "Industry", "Level", "Deadline", "Apply URL", "Department", "Function"
             ]
 
             # Ensure all columns exist
@@ -204,4 +215,3 @@ if st.button("Fetch Jobs"):
                 st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")
         else:
             st.warning("No jobs found.")
-

@@ -201,4 +201,44 @@ if st.button("Fetch Jobs"):
                 "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID", "Company",
                 "Type", "Description", "Salary Range", "Access", "Location",
-                "Industry", "Level",
+                "Industry", "Level", "Salary", "Deadline", "Apply URL", "Department", "Function",
+                "Job ID", "Job Title", "Link", "Qualifications", "Contact Email"
+            ]
+            for col in full_column_order:
+                if col not in df.columns:
+                    df[col] = ""
+            df_full = df[full_column_order]
+
+            # --- FILTERED VERSION ---
+            filtered_columns = [
+                "Job ID", "Job Title", "Location", "Link", "Description",
+                "Qualifications", "Contact Email", "Deadline"
+            ]
+            for col in filtered_columns:
+                if col not in df.columns:
+                    df[col] = ""
+            df_filtered = df[filtered_columns]
+
+            # --- DISPLAY AND DOWNLOAD CSV ---
+            st.subheader("Full Version")
+            st.dataframe(df_full)
+            csv_full = df_full.to_csv(index=False)
+            st.download_button(
+                label="Download Full CSV",
+                data=csv_full,
+                file_name="henkel_jobs_full.csv",
+                mime="text/csv"
+            )
+
+            st.subheader("Filtered Version")
+            st.dataframe(df_filtered)
+            csv_filtered = df_filtered.to_csv(index=False)
+            st.download_button(
+                label="Download Filtered CSV",
+                data=csv_filtered,
+                file_name="henkel_jobs_filtered.csv",
+                mime="text/csv"
+            )
+
+        else:
+            st.warning("No jobs found.")

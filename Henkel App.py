@@ -195,6 +195,20 @@ if st.button("Fetch Jobs"):
                 df[col] = ""  # blank column
 
             st.dataframe(df)
+            # Reorder columns
+column_order = [
+    "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+    "Created On", "Updated On", "Published On", "CMS ID", "Company / Business Unit",
+    "Type", "Description", "Company Salary Range", "Access Industry Salary", "Location",
+    "Job Center", "Level", "Company Salary Range", "Deadline", "Apply URL"
+]
+
+# Ensure all columns exist (avoid error if missing)
+for col in column_order:
+    if col not in df.columns:
+        df[col] = ""
+
+df = df[column_order]
 
             # Excel download
             df.to_excel("henkel_jobs.xlsx", index=False)
@@ -202,3 +216,4 @@ if st.button("Fetch Jobs"):
                 st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")
         else:
             st.warning("No jobs found.")
+

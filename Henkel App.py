@@ -192,7 +192,7 @@ if st.button("Fetch Jobs"):
             blank_columns = [
                 "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID",
-                "Salary Range", "Access", "Salary"  # renamed and added
+                "Salary Range", "Access", "Salary"
             ]
             for col in blank_columns:
                 df[col] = ""
@@ -201,36 +201,4 @@ if st.button("Fetch Jobs"):
                 "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID", "Company",
                 "Type", "Description", "Salary Range", "Access", "Location",
-                "Industry", "Level", "Salary", "Deadline", "Apply URL", "Department", "Function",
-                "Job ID", "Job Title", "Link", "Qualifications", "Contact Email"
-            ]
-            for col in full_column_order:
-                if col not in df.columns:
-                    df[col] = ""
-            df_full = df[full_column_order]
-
-            # --- FILTERED VERSION ---
-            filtered_columns = [
-                "Job ID", "Job Title", "Location", "Link", "Description",
-                "Qualifications", "Contact Email", "Deadline"
-            ]
-            for col in filtered_columns:
-                if col not in df.columns:
-                    df[col] = ""
-            df_filtered = df[filtered_columns]
-
-            # Display and download
-            st.subheader("Full Version")
-            st.dataframe(df_full)
-            df_full.to_excel("henkel_jobs_full.xlsx", index=False)
-            with open("henkel_jobs_full.xlsx", "rb") as f:
-                st.download_button("Download Full Excel", data=f, file_name="henkel_jobs_full.xlsx")
-
-            st.subheader("Filtered Version")
-            st.dataframe(df_filtered)
-            df_filtered.to_excel("henkel_jobs_filtered.xlsx", index=False)
-            with open("henkel_jobs_filtered.xlsx", "rb") as f:
-                st.download_button("Download Filtered Excel", data=f, file_name="henkel_jobs_filtered.xlsx")
-
-        else:
-            st.warning("No jobs found.")
+                "Industry", "Level",

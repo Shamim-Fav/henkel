@@ -21,7 +21,7 @@ MAX_RETRIES = 3        # retry attempts for failed requests
 RETRY_DELAY = 2        # seconds to wait between retries
 
 # ========== STREAMLIT UI ==========
-st.title("Henkel Job Scraper (With Company Column & Custom Columns)")
+st.title("Henkel Job Scraper (Final Version)")
 
 selected_regions = st.multiselect(
     "Select Regions",
@@ -109,29 +109,22 @@ def fetch_job_details(job):
             apply_link = apply_link_tag.get("href") if apply_link_tag else None
 
             return {
-                "Job ID": job_id,
-                "Name": title,  # renamed
-                "Location": location,
-                "Link": job_link,
-                "Description": description,
-                "Qualifications": qualifications,
-                "Contact Email": contact_email,
-                "Deadline": application_deadline,  # renamed
-                "Job Center": job_center_text,
-                "Department": job_department,
-                "Function": job_function,
+                "Name": title,  # renamed from Job Title
                 "Detailed Location": job_detailed_location,
                 "Company / Business Unit": job_company,
+                "Description": description,
                 "Level": job_type,  # renamed Employment Type
                 "Type": job_nature,  # renamed Job Nature
-                "Apply URL": apply_link  # renamed
+                "Deadline": application_deadline,  # renamed Application Deadline
+                "Job Center": job_center_text,
+                "Apply URL": apply_link  # renamed Apply Link
             }
 
         except Exception as e:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY)
             else:
-                return {"Job ID": job_id, "Name": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
+                return {"Name": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
 
 # ========== MAIN SCRAPER LOOP ==========
 if st.button("Fetch Jobs"):
@@ -186,29 +179,36 @@ if st.button("Fetch Jobs"):
             df = pd.DataFrame(all_jobs)
 
             # ========== ADD NEW BLANK COLUMNS ==========
-            new_columns = [
+            blank_columns = [
                 "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID",
                 "Company Salary Range", "Access Industry Salary"
             ]
-            for col in new_columns:
-                df[col] = ""  # blank column
+            for col in blank_columns:
+                df[col] = ""
+
+            # ========== RENAME COMPANY / BUSINESS UNIT TO COMPANY ==========
+            df.rename(columns={"Company / Business Unit": "Company"}, inplace=True)
+            df.rename(columns={"Job Center": "Industry"}, inplace=True)
+            df.rename(columns={"Company Salary Range": "Salary Range"}, inplace=True)
+            df.rename(columns={"Access Industry Salary": "Access"}, inplace=True)
+
+            # ========== REORDER COLUMNS ==========
+            column_order = [
+                "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Created On", "Updated On", "Published On", "CMS ID", "Company",
+                "Type", "Description", "Salary Range", "Access", "Detailed Location",
+                "Industry", "Level", "Salary", "Deadline", "Apply URL"
+            ]
+
+            # Ensure all columns exist
+            for col in column_order:
+                if col not in df.columns:
+                    df[col] = ""
+
+            df = df[column_order]
 
             st.dataframe(df)
-            # Reorder columns
-column_order = [
-    "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
-    "Created On", "Updated On", "Published On", "CMS ID", "Company / Business Unit",
-    "Type", "Description", "Company Salary Range", "Access Industry Salary", "Location",
-    "Job Center", "Level", "Company Salary Range", "Deadline", "Apply URL"
-]
-
-# Ensure all columns exist (avoid error if missing)
-for col in column_order:
-    if col not in df.columns:
-        df[col] = ""
-
-df = df[column_order]
 
             # Excel download
             df.to_excel("henkel_jobs.xlsx", index=False)
@@ -216,4 +216,3 @@ df = df[column_order]
                 st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")
         else:
             st.warning("No jobs found.")
-

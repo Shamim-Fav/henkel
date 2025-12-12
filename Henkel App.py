@@ -21,7 +21,7 @@ MAX_RETRIES = 3        # retry attempts for failed requests
 RETRY_DELAY = 2        # seconds to wait between retries
 
 # ========== STREAMLIT UI ==========
-st.title("Henkel Job Scraper (With Company Column)")
+st.title("Henkel Job Scraper (With Company Column & Custom Columns)")
 
 selected_regions = st.multiselect(
     "Select Regions",
@@ -110,28 +110,28 @@ def fetch_job_details(job):
 
             return {
                 "Job ID": job_id,
-                "Job Title": title,
+                "Name": title,  # renamed
                 "Location": location,
                 "Link": job_link,
                 "Description": description,
                 "Qualifications": qualifications,
                 "Contact Email": contact_email,
-                "Application Deadline": application_deadline,
+                "Deadline": application_deadline,  # renamed
                 "Job Center": job_center_text,
                 "Department": job_department,
                 "Function": job_function,
                 "Detailed Location": job_detailed_location,
                 "Company / Business Unit": job_company,
-                "Employment Type": job_type,
-                "Job Nature": job_nature,
-                "Apply Link": apply_link
+                "Level": job_type,  # renamed Employment Type
+                "Type": job_nature,  # renamed Job Nature
+                "Apply URL": apply_link  # renamed
             }
 
         except Exception as e:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY)
             else:
-                return {"Job ID": job_id, "Job Title": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
+                return {"Job ID": job_id, "Name": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
 
 # ========== MAIN SCRAPER LOOP ==========
 if st.button("Fetch Jobs"):
@@ -184,6 +184,16 @@ if st.button("Fetch Jobs"):
         if all_jobs:
             st.success(f"Found {len(all_jobs)} jobs!")
             df = pd.DataFrame(all_jobs)
+
+            # ========== ADD NEW BLANK COLUMNS ==========
+            new_columns = [
+                "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Created On", "Updated On", "Published On", "CMS ID",
+                "Company Salary Range", "Access Industry Salary"
+            ]
+            for col in new_columns:
+                df[col] = ""  # blank column
+
             st.dataframe(df)
 
             # Excel download

@@ -187,7 +187,7 @@ if st.button("Fetch Jobs"):
             blank_columns = [
                 "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID",
-                "Company Salary Range", "Access Industry Salary"
+                "Salary Range", "Access", "Salary"  # renamed and added
             ]
             for col in blank_columns:
                 df[col] = ""
@@ -196,8 +196,8 @@ if st.button("Fetch Jobs"):
             column_order = [
                 "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID", "Company",
-                "Type", "Description", "Company Salary Range", "Access Industry Salary", "Location",
-                "Industry", "Level", "Deadline", "Apply URL", "Department", "Function"
+                "Type", "Description", "Salary Range", "Access", "Location",
+                "Industry", "Level", "Salary", "Deadline", "Apply URL", "Department", "Function"
             ]
 
             # Ensure all columns exist

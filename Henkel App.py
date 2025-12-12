@@ -55,7 +55,7 @@ def fetch_job_details(job):
             description_section = soup.find("div", class_="job-detail__content-description")
             description = str(description_section) if description_section else None
 
-            # Qualifications (plain text for now)
+            # Qualifications (plain text)
             qualification_section = soup.find("div", class_="job-detail__content-qualification")
             qualifications = qualification_section.get_text(separator="\n").strip() if qualification_section else None
 
@@ -122,14 +122,19 @@ def fetch_job_details(job):
                 "Department": job_department,
                 "Function": job_function,
                 "Apply URL": apply_link,
-                "Slug": slug
+                "Slug": slug,
+                "Job ID": job_id,
+                "Job Title": title,
+                "Link": job_link,
+                "Qualifications": qualifications,
+                "Contact Email": contact_email
             }
 
         except Exception as e:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY)
             else:
-                return {"Name": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
+                return {"Job ID": job_id, "Job Title": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
 
 # ========== MAIN SCRAPER LOOP ==========
 if st.button("Fetch Jobs"):
@@ -183,7 +188,7 @@ if st.button("Fetch Jobs"):
             st.success(f"Found {len(all_jobs)} jobs!")
             df = pd.DataFrame(all_jobs)
 
-            # Add blank columns
+            # --- FULL VERSION ---
             blank_columns = [
                 "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID",
@@ -192,27 +197,40 @@ if st.button("Fetch Jobs"):
             for col in blank_columns:
                 df[col] = ""
 
-            # Reorder columns
-            column_order = [
+            full_column_order = [
                 "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID", "Company",
                 "Type", "Description", "Salary Range", "Access", "Location",
-                "Industry", "Level", "Salary", "Deadline", "Apply URL"
+                "Industry", "Level", "Salary", "Deadline", "Apply URL", "Department", "Function",
+                "Job ID", "Job Title", "Link", "Qualifications", "Contact Email"
             ]
-
-            # Ensure all columns exist
-            for col in column_order:
+            for col in full_column_order:
                 if col not in df.columns:
                     df[col] = ""
+            df_full = df[full_column_order]
 
-            df = df[column_order]
+            # --- FILTERED VERSION ---
+            filtered_columns = [
+                "Job ID", "Job Title", "Location", "Link", "Description",
+                "Qualifications", "Contact Email", "Deadline"
+            ]
+            for col in filtered_columns:
+                if col not in df.columns:
+                    df[col] = ""
+            df_filtered = df[filtered_columns]
 
-            st.dataframe(df)
+            # Display and download
+            st.subheader("Full Version")
+            st.dataframe(df_full)
+            df_full.to_excel("henkel_jobs_full.xlsx", index=False)
+            with open("henkel_jobs_full.xlsx", "rb") as f:
+                st.download_button("Download Full Excel", data=f, file_name="henkel_jobs_full.xlsx")
 
-            # Excel download
-            df.to_excel("henkel_jobs.xlsx", index=False)
-            with open("henkel_jobs.xlsx", "rb") as f:
-                st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")
+            st.subheader("Filtered Version")
+            st.dataframe(df_filtered)
+            df_filtered.to_excel("henkel_jobs_filtered.xlsx", index=False)
+            with open("henkel_jobs_filtered.xlsx", "rb") as f:
+                st.download_button("Download Filtered Excel", data=f, file_name="henkel_jobs_filtered.xlsx")
+
         else:
             st.warning("No jobs found.")
-

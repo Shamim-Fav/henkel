@@ -21,7 +21,7 @@ MAX_RETRIES = 3        # retry attempts for failed requests
 RETRY_DELAY = 2        # seconds to wait between retries
 
 # ========== STREAMLIT UI ==========
-st.title("Henkel Job Scraper (Fixed Columns)")
+st.title("Henkel Job Scraper (Fixed Company & Location)")
 
 selected_regions = st.multiselect(
     "Select Regions",
@@ -32,7 +32,7 @@ selected_regions = st.multiselect(
 max_jobs = st.number_input("Maximum Jobs to Scrape (0 = All)", min_value=0, value=MAX_JOBS_DEFAULT, step=10)
 
 def fetch_job_details(job):
-    """Fetch individual job page and parse details with retry mechanism and correct column mapping."""
+    """Fetch individual job page and parse details with retry mechanism and fixed Company."""
     job_link = "https://www.henkel.com" + job.get("link", "")
     job_id = job.get("id")
     title = job.get("title")
@@ -60,7 +60,7 @@ def fetch_job_details(job):
             deadline_tag = soup.find("strong", string="Application Deadline:")
             application_deadline = deadline_tag.find_next("span").get_text(strip=True) if deadline_tag else None
 
-            # Job Center
+            # Job Center (Industry)
             job_center_tag = soup.find("strong", string="Job-Center:")
             job_center_text = ""
             if job_center_tag:
@@ -72,12 +72,12 @@ def fetch_job_details(job):
                     if url:
                         job_center_text += f" ({url})"
 
-            # ========== FIXED CATEGORY PARSING ==========
+            # ========== CATEGORY PARSING ==========
             job_department = None
             job_function = None
-            job_detailed_location = None
             job_type = None
             job_nature = None
+            job_location = None
 
             for span in soup.select("span.category"):
                 svg = span.find("svg")
@@ -90,7 +90,7 @@ def fetch_job_details(job):
                         else:
                             job_function = text
                     elif "a-icon--maps" in svg_class:
-                        job_detailed_location = text
+                        job_location = text  # keep full location as-is
                     elif "a-icon--clock" in svg_class:
                         job_type = text
                     elif "a-icon--doc-inv" in svg_class:
@@ -101,28 +101,24 @@ def fetch_job_details(job):
             apply_link = apply_link_tag.get("href") if apply_link_tag else None
 
             return {
-                "Job ID": job_id,
-                "Job Title": title,
-                "Location": location,
-                "Link": job_link,
+                "Name": title,
+                "Location": job_location,  # replaced Detailed Location
+                "Company": "Henkel AG & Co. KGaA",  # fixed company name
                 "Description": description,
-                "Qualifications": qualifications,
-                "Contact Email": contact_email,
-                "Application Deadline": application_deadline,
-                "Job Center": job_center_text,
+                "Level": job_type,  # Employment Type
+                "Type": job_nature,  # Job Nature
+                "Deadline": application_deadline,
+                "Industry": job_center_text,
                 "Department": job_department,
                 "Function": job_function,
-                "Detailed Location": job_detailed_location,
-                "Employment Type": job_type,
-                "Job Nature": job_nature,
-                "Apply Link": apply_link
+                "Apply URL": apply_link
             }
 
         except Exception as e:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY)
             else:
-                return {"Job ID": job_id, "Job Title": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
+                return {"Name": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
 
 # ========== MAIN SCRAPER LOOP ==========
 if st.button("Fetch Jobs"):
@@ -175,6 +171,31 @@ if st.button("Fetch Jobs"):
         if all_jobs:
             st.success(f"Found {len(all_jobs)} jobs!")
             df = pd.DataFrame(all_jobs)
+
+            # ========== ADD NEW BLANK COLUMNS ==========
+            blank_columns = [
+                "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Created On", "Updated On", "Published On", "CMS ID",
+                "Company Salary Range", "Access Industry Salary"
+            ]
+            for col in blank_columns:
+                df[col] = ""
+
+            # ========== REORDER COLUMNS ==========
+            column_order = [
+                "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Created On", "Updated On", "Published On", "CMS ID", "Company",
+                "Type", "Description", "Company Salary Range", "Access Industry Salary", "Location",
+                "Industry", "Level", "Company Salary Range", "Deadline", "Apply URL"
+            ]
+
+            # Ensure all columns exist
+            for col in column_order:
+                if col not in df.columns:
+                    df[col] = ""
+
+            df = df[column_order]
+
             st.dataframe(df)
 
             # Excel download

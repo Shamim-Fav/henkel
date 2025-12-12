@@ -197,7 +197,7 @@ if st.button("Fetch Jobs"):
                 "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
                 "Created On", "Updated On", "Published On", "CMS ID", "Company",
                 "Type", "Description", "Salary Range", "Access", "Location",
-                "Industry", "Level", "Salary", "Deadline", "Apply URL", "Department", "Function"
+                "Industry", "Level", "Salary", "Deadline", "Apply URL"
             ]
 
             # Ensure all columns exist
@@ -215,3 +215,4 @@ if st.button("Fetch Jobs"):
                 st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")
         else:
             st.warning("No jobs found.")
+

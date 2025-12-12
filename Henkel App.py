@@ -32,14 +32,12 @@ selected_regions = st.multiselect(
 max_jobs = st.number_input("Maximum Jobs to Scrape (0 = All)", min_value=0, value=MAX_JOBS_DEFAULT, step=10)
 
 def generate_slug(company, job_title, location):
-    """Generate slug from company, job title, and first two parts of location."""
-    location_parts = location.split(",")[:2]  # first two parts
+    location_parts = location.split(",")[:2]
     parts = [company, job_title] + [part.strip() for part in location_parts]
     slug = "-".join(parts).lower().replace(" ", "-")
     return slug
 
 def fetch_job_details(job):
-    """Fetch individual job page and parse details with retry mechanism and fixed Company."""
     job_link = "https://www.henkel.com" + job.get("link", "")
     job_id = job.get("id")
     title = job.get("title")
@@ -51,23 +49,18 @@ def fetch_job_details(job):
             job_response.raise_for_status()
             soup = BeautifulSoup(job_response.text, "html.parser")
 
-            # Description as HTML
             description_section = soup.find("div", class_="job-detail__content-description")
             description = str(description_section) if description_section else None
 
-            # Qualifications (plain text)
             qualification_section = soup.find("div", class_="job-detail__content-qualification")
             qualifications = qualification_section.get_text(separator="\n").strip() if qualification_section else None
 
-            # Contact Email
             contact_tag = soup.select_one("p.job-detail__content-contact a")
             contact_email = contact_tag.get("href").replace("mailto:", "") if contact_tag else None
 
-            # Application Deadline
             deadline_tag = soup.find("strong", string="Application Deadline:")
             application_deadline = deadline_tag.find_next("span").get_text(strip=True) if deadline_tag else None
 
-            # Job Center (Industry)
             job_center_tag = soup.find("strong", string="Job-Center:")
             job_center_text = ""
             if job_center_tag:
@@ -79,7 +72,6 @@ def fetch_job_details(job):
                     if url:
                         job_center_text += f" ({url})"
 
-            # Categories
             job_department = None
             job_function = None
             job_type = None
@@ -97,17 +89,15 @@ def fetch_job_details(job):
                         else:
                             job_function = text
                     elif "a-icon--maps" in svg_class:
-                        job_location = text  # full location
+                        job_location = text
                     elif "a-icon--clock" in svg_class:
                         job_type = text
                     elif "a-icon--doc-inv" in svg_class:
                         job_nature = text
 
-            # Application link
             apply_link_tag = soup.select_one("a.job-detail__apply-now")
             apply_link = apply_link_tag.get("href") if apply_link_tag else None
 
-            # Generate slug
             slug = generate_slug("Henkel", title, job_location or location)
 
             return {
@@ -160,12 +150,10 @@ if st.button("Fetch Jobs"):
             if not jobs:
                 break
 
-            # Limit jobs if max_jobs is set
             if max_jobs and max_jobs > 0:
                 remaining = max_jobs - len(all_jobs)
                 jobs = jobs[:remaining]
 
-            # Fetch job details in parallel
             with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
                 future_to_job = {executor.submit(fetch_job_details, job): job for job in jobs}
                 for future in as_completed(future_to_job):
@@ -219,22 +207,21 @@ if st.button("Fetch Jobs"):
                     df[col] = ""
             df_filtered = df[filtered_columns]
 
-            # --- DISPLAY AND DOWNLOAD CSV ---
-            st.subheader("Full Version")
-            st.dataframe(df_full)
-            csv_full = df_full.to_csv(index=False)
+            # --- DISPLAY ONE TABLE AND TWO DOWNLOAD BUTTONS ---
+            st.dataframe(df_full, use_container_width=True)
+
+            csv_full = df_full.to_csv(index=False).encode('utf-8-sig')
+            csv_filtered = df_filtered.to_csv(index=False).encode('utf-8-sig')
+
+            st.subheader("Download CSVs")
             st.download_button(
-                label="Download Full CSV",
+                "Download Full CSV",
                 data=csv_full,
                 file_name="henkel_jobs_full.csv",
                 mime="text/csv"
             )
-
-            st.subheader("Filtered Version")
-            st.dataframe(df_filtered)
-            csv_filtered = df_filtered.to_csv(index=False)
             st.download_button(
-                label="Download Filtered CSV",
+                "Download Filtered CSV",
                 data=csv_filtered,
                 file_name="henkel_jobs_filtered.csv",
                 mime="text/csv"

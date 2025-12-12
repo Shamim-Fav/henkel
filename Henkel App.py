@@ -14,14 +14,14 @@ HEADERS = {
     "referer": "https://www.henkel.com/careers/jobs-and-application"
 }
 
-LOAD_COUNT = 10  # jobs per request
+LOAD_COUNT = 10        # jobs per request
 MAX_JOBS_DEFAULT = 50  # default max jobs to scrape
-MAX_THREADS = 10      # number of parallel requests
-MAX_RETRIES = 3       # retry attempts for failed requests
-RETRY_DELAY = 2       # seconds to wait between retries
+MAX_THREADS = 10       # number of parallel requests
+MAX_RETRIES = 3        # retry attempts for failed requests
+RETRY_DELAY = 2        # seconds to wait between retries
 
 # ========== STREAMLIT UI ==========
-st.title("Henkel Job Scraper (Optimized with Retry)")
+st.title("Henkel Job Scraper (Fixed Columns)")
 
 selected_regions = st.multiselect(
     "Select Regions",
@@ -32,7 +32,7 @@ selected_regions = st.multiselect(
 max_jobs = st.number_input("Maximum Jobs to Scrape (0 = All)", min_value=0, value=MAX_JOBS_DEFAULT, step=10)
 
 def fetch_job_details(job):
-    """Fetch individual job page and parse details with retry mechanism."""
+    """Fetch individual job page and parse details with retry mechanism and correct column mapping."""
     job_link = "https://www.henkel.com" + job.get("link", "")
     job_id = job.get("id")
     title = job.get("title")
@@ -44,18 +44,23 @@ def fetch_job_details(job):
             job_response.raise_for_status()
             soup = BeautifulSoup(job_response.text, "html.parser")
 
+            # Description
             description_section = soup.find("div", class_="job-detail__content-description")
             description = description_section.get_text(separator="\n").strip() if description_section else None
 
+            # Qualifications
             qualification_section = soup.find("div", class_="job-detail__content-qualification")
             qualifications = qualification_section.get_text(separator="\n").strip() if qualification_section else None
 
+            # Contact Email
             contact_tag = soup.select_one("p.job-detail__content-contact a")
             contact_email = contact_tag.get("href").replace("mailto:", "") if contact_tag else None
 
+            # Application Deadline
             deadline_tag = soup.find("strong", string="Application Deadline:")
             application_deadline = deadline_tag.find_next("span").get_text(strip=True) if deadline_tag else None
 
+            # Job Center
             job_center_tag = soup.find("strong", string="Job-Center:")
             job_center_text = ""
             if job_center_tag:
@@ -67,13 +72,31 @@ def fetch_job_details(job):
                     if url:
                         job_center_text += f" ({url})"
 
-            categories = [span.get_text(strip=True) for span in soup.select("span.category")]
-            job_department = categories[0] if len(categories) > 0 else None
-            job_function = categories[1] if len(categories) > 1 else None
-            job_detailed_location = categories[2] if len(categories) > 2 else None
-            job_type = categories[3] if len(categories) > 3 else None
-            job_nature = categories[4] if len(categories) > 4 else None
+            # ========== FIXED CATEGORY PARSING ==========
+            job_department = None
+            job_function = None
+            job_detailed_location = None
+            job_type = None
+            job_nature = None
 
+            for span in soup.select("span.category"):
+                svg = span.find("svg")
+                if svg:
+                    svg_class = svg.get("class", [])
+                    text = span.get_text(strip=True)
+                    if "a-icon--tag" in svg_class:
+                        if not job_department:
+                            job_department = text
+                        else:
+                            job_function = text
+                    elif "a-icon--maps" in svg_class:
+                        job_detailed_location = text
+                    elif "a-icon--clock" in svg_class:
+                        job_type = text
+                    elif "a-icon--doc-inv" in svg_class:
+                        job_nature = text
+
+            # Application link
             apply_link_tag = soup.select_one("a.job-detail__apply-now")
             apply_link = apply_link_tag.get("href") if apply_link_tag else None
 
@@ -101,6 +124,7 @@ def fetch_job_details(job):
             else:
                 return {"Job ID": job_id, "Job Title": title, "Error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
 
+# ========== MAIN SCRAPER LOOP ==========
 if st.button("Fetch Jobs"):
     progress_bar = st.progress(0)
     with st.spinner("Scraping jobs... this may take a few minutes..."):
@@ -153,6 +177,7 @@ if st.button("Fetch Jobs"):
             df = pd.DataFrame(all_jobs)
             st.dataframe(df)
 
+            # Excel download
             df.to_excel("henkel_jobs.xlsx", index=False)
             with open("henkel_jobs.xlsx", "rb") as f:
                 st.download_button("Download Excel", data=f, file_name="henkel_jobs.xlsx")

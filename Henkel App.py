@@ -199,8 +199,10 @@ if st.button("Fetch Jobs"):
 
             # --- FILTERED VERSION ---
             filtered_columns = [
-                "Job ID", "Job Title", "Location", "Link", "Description",
-                "Qualifications", "Contact Email", "Deadline"
+                "Name", "Slug", "Collection ID", "Locale ID", "Item ID", "Archived", "Draft",
+                "Created On", "Updated On", "Published On", "CMS ID", "Company",
+                "Type", "Description", "Salary Range", "Access", "Location",
+                "Industry", "Level", "Salary", "Deadline", "Apply URL"
             ]
             for col in filtered_columns:
                 if col not in df.columns:
@@ -229,3 +231,4 @@ if st.button("Fetch Jobs"):
 
         else:
             st.warning("No jobs found.")
+
